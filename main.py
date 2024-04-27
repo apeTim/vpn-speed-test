@@ -19,18 +19,19 @@ def run():
     cur = conn.cursor()
 
     cur.execute(
-        "SELECT stk.key FROM stats.servers_test_keys as stk JOIN servers ON stk.server = servers.ip_address WHERE servers.is_active = true")
+        "SELECT servers.ip_address, stk.key FROM stats.servers_test_keys as stk JOIN servers ON stk.server = servers.ip_address WHERE servers.is_active = true")
     keys = cur.fetchall()
 
     for key_row in keys:
-        key = key_row[0]
+        ip = key_row[0]
+        key = key_row[1]
         keypass = key.split("@")[0].split("//")[1]
         server = key.split("@")[1].split(":")[0]
         port = key.split("@")[1].split(":")[1].split("/?")[0]
         method = base64.b64decode(keypass).decode('utf-8').split(':')[0]
         password = base64.b64decode(keypass).decode('utf-8').split(':')[1]
 
-        print(f"Measuring {server}")
+        print(f"Measuring {server} ({ip})")
 
         ss_process = subprocess.Popen(
             ["ss-local", "-s", server, "-p", port, "-k", password, "-l", str(LOCAL_PORT), "-m", method],
@@ -51,7 +52,7 @@ def run():
 
             now = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%SZ')
             cur.execute("INSERT INTO stats.servers_test_results (server, download_speed_mbps, instagram_speed_sec, created_at) VALUES (%s, %s, %s, %s)",
-                        (server, download_speed, instagram_speed, now))
+                        (ip, download_speed, instagram_speed, now))
             conn.commit()
         except Exception as e:
             print(e)
